@@ -20,7 +20,7 @@ const PROTECTED_PREFIXES = [
   '/mod',
 ]
 
-export async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   // Must re-assign on every setAll call (SSR cookie mutation pattern)
   let supabaseResponse = NextResponse.next({ request })
 
