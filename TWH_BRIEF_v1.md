@@ -28,7 +28,9 @@ This is a fully custom build. No CMS. No game engine. Built from scratch.
   in this Brief (`unstable_cache`, `cookies()`, Server Actions, Realtime) work
   identically on v16. Do not pin to 14.
 - **Database:** Supabase (PostgreSQL)
-- **Auth:** Supabase Auth (email/password, sessions, no email confirmation)
+- **Auth:** Supabase Auth (email/password, sessions, email confirmation required)
+  Confirmation email sent via Resend. User lands on "Check your email" page after
+  registration. Welcome Council Notice fires after confirmation, not on sign-up.
 - **Realtime:** Supabase Realtime (live chat, notifications, online presence)
 - **File Storage:** Supabase Storage (avatars, character portraits, theme assets)
 - **Image Processing:** sharp (server-side, lossless PNG processing for all image uploads)
@@ -271,7 +273,7 @@ Characters are sub-profiles of user accounts. One user can have up to 3 characte
 
 ## 8. Multi-Theme Engine
 
-Five themes available. Blood Moon is the default. Theme preference stored on the user's characters row (`theme_preference` text, default `'blood-moon'`).
+Five themes available. Blood Moon is the default. Theme preference stored on the user's `users` row (`theme_preference` text, default `'blood-moon'`).
 
 Theme is applied via `data-theme` attribute on `<body>`. Each theme is a `:root` CSS variable override block in `globals.css`.
 
@@ -442,6 +444,13 @@ Cached functions and tags (to be extended as features are built):
 
 ## 18. Database Schema
 
+### Table Naming Convention
+**Critical — read before touching any table:**
+- `users` — account-level profile. One row per registered user. Maps to `auth.users.id`.
+- `characters` — RP character sub-profiles. Up to 3 per user. FK to `users.id`.
+
+These names are final and intentional. `users` is the person. `characters` are the personas they play. Never reverse this or use `characters` to mean the account profile.
+
 ### Core Tables
 
 ```sql
@@ -449,13 +458,12 @@ Cached functions and tags (to be extended as features are built):
 site_settings    — key (text PK), value (text), updated_at
 
 -- USER ACCOUNTS (Supabase Auth handles auth.users)
-characters       — id (uuid PK = auth.users.id), display_name (text unique),
+users            — id (uuid PK = auth.users.id), display_name (text unique),
                    avatar_url (text nullable), bio (text nullable),
-                   xp (integer default 0), level (integer default 1),
                    theme_preference (text default 'blood-moon'),
                    show_preference (text nullable),
                    watching_status (jsonb default '{}'),
-                   active_character_id (uuid nullable FK characters_rp.id),
+                   active_character_id (uuid nullable FK characters.id),
                    created_at (timestamptz default now())
 
 -- SESSIONS / SECURITY
@@ -483,7 +491,7 @@ factions         — id (uuid), name (text unique), slug (text unique),
                    leader_user_id (uuid nullable FK auth.users), created_at
 
 -- RP CHARACTERS
-characters_rp    — id (uuid), user_id (uuid FK auth.users),
+characters       — id (uuid), user_id (uuid FK users.id ON DELETE CASCADE),
                    name (text), avatar_url (text nullable),
                    bio (text nullable HTML),
                    faction_id (uuid nullable FK factions),
@@ -497,20 +505,20 @@ characters_rp    — id (uuid), user_id (uuid FK auth.users),
 character_level_thresholds — level (integer PK), xp_required (integer),
                    label (text), unlocks_description (text nullable), created_at
 
-character_powers — id (uuid), character_id (uuid FK characters_rp ON DELETE CASCADE),
+character_powers — id (uuid), character_id (uuid FK characters ON DELETE CASCADE),
                    power_name (text), power_description (text nullable),
                    source (text CHECK 'apothecary'/'level_unlock'/'admin_grant'),
                    acquired_at (timestamptz)
                    -- Index: (character_id)
 
-character_xp_log — id (uuid), character_id (uuid FK characters_rp ON DELETE CASCADE),
+character_xp_log — id (uuid), character_id (uuid FK characters ON DELETE CASCADE),
                    amount (integer), reason (text), awarded_by (uuid nullable),
                    created_at (timestamptz)
                    -- Index: (character_id)
 
 character_relationships — id (uuid),
-                   character_id (uuid FK characters_rp ON DELETE CASCADE),
-                   related_character_id (uuid FK characters_rp ON DELETE CASCADE),
+                   character_id (uuid FK characters ON DELETE CASCADE),
+                   related_character_id (uuid FK characters ON DELETE CASCADE),
                    relationship_type (text CHECK ally/rival/family/mentor/apprentice/other),
                    relationship_label (text nullable),
                    is_mutual (boolean default false),
@@ -541,7 +549,7 @@ board_threads    — id (uuid), board_id (uuid FK boards), author_id (uuid FK au
 
 board_posts      — id (uuid), thread_id (uuid FK board_threads),
                    author_id (uuid FK auth.users),
-                   character_id (uuid nullable FK characters_rp ON DELETE SET NULL),
+                   character_id (uuid nullable FK characters ON DELETE SET NULL),
                    is_ic (boolean default false),
                    content (text HTML), is_flagged (boolean default false),
                    flag_reason (text nullable), flagged_by (uuid nullable),
@@ -589,7 +597,7 @@ thread_bookmarks — id (uuid), user_id (uuid FK auth.users),
 
 -- LIVE CHAT
 chat_messages    — id (uuid), user_id (uuid FK auth.users),
-                   character_id (uuid nullable FK characters_rp ON DELETE SET NULL),
+                   character_id (uuid nullable FK characters ON DELETE SET NULL),
                    is_ic (boolean default false),
                    channel_id (text default 'general'),
                    content (text), mentioned_user_ids (jsonb default '[]'),
@@ -604,7 +612,7 @@ apothecary_listings — id (uuid), name (text), description (text),
                    min_level_required (integer default 1),
                    is_active (boolean default true), created_at
 
-apothecary_purchases — id (uuid), character_id (uuid FK characters_rp ON DELETE CASCADE),
+apothecary_purchases — id (uuid), character_id (uuid FK characters ON DELETE CASCADE),
                    listing_id (uuid FK apothecary_listings),
                    purchased_at (timestamptz)
                    UNIQUE (character_id, listing_id)
@@ -656,7 +664,7 @@ achievement_definitions — id (uuid), name (text), description (text),
                    trigger_value (integer nullable), created_at
 
 character_achievements — id (uuid),
-                   character_id (uuid FK characters_rp ON DELETE CASCADE),
+                   character_id (uuid FK characters ON DELETE CASCADE),
                    achievement_id (uuid FK achievement_definitions),
                    earned_at (timestamptz)
                    UNIQUE (character_id, achievement_id)
@@ -690,10 +698,10 @@ void createNotification(userId, { type, title, body, link })
 await createNotification(userId, { type, title, body, link })
 ```
 
-### Atomic XP / Gold Operations
+### Atomic XP Operations
 Always use conditional UPDATE, never read-then-write:
 ```sql
-UPDATE characters_rp SET xp = xp - $cost WHERE id = $id AND xp >= $cost RETURNING id
+UPDATE characters SET xp = xp - $cost WHERE id = $id AND xp >= $cost RETURNING id
 -- If no row returned: insufficient XP
 ```
 
@@ -731,10 +739,12 @@ startTransition(async () => { await action() })
 - `TWH_BRIEF_v1.md` — master project document written
 - `TWH_PROCESS_v1.md` — build governance document written
 
-**TWH-0.3 — Pending**
-- Supabase project creation
-- Storage bucket setup
-- Vercel deployment
+**TWH-0.3 — In Progress**
+- GitHub repository: `witchinghour`
+- Supabase project: `the-witching-hour`
+- Storage buckets: pending
+- `.env.local`: pending
+- Vercel: pending
 
 *This document is updated at the completion of each build phase.*
 *Cross-reference: TWH_PROCESS_v1.md (build governance), TWH_ROADMAP (in planning chat)*

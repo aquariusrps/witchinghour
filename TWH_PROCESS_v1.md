@@ -352,7 +352,7 @@ Every UI element must use the Blood Moon design tokens from §4 of the Brief. Wh
 
 ## 15. Canon Source System
 
-The `canon_source` field appears on: `board_threads`, `board_posts`, `characters_rp`, `grimoire_entries`, `rewatch_events`, and potentially more tables.
+The `canon_source` field appears on: `board_threads`, `board_posts`, `characters`, `grimoire_entries`, `rewatch_events`, and potentially more tables.
 
 **Canonical values:**
 ```
@@ -372,14 +372,16 @@ These values are exact strings — no variations, no capitalisation, no spaces. 
 
 ## 16. Character System Rules
 
-### Two Tables for User Data
-- `characters` — the user account profile (display name, avatar, bio, theme, XP as a user)
-- `characters_rp` — RP character sub-profiles (name, faction, powers, RP XP, level)
+### Two Tables — Never Conflate Them
+- `users` — the account-level profile. One row per registered user. Display name, avatar, bio, theme preference, watching status, active_character_id. Maps 1:1 with `auth.users`.
+- `characters` — RP character sub-profiles. Up to 3 per user. Name, faction, powers, XP, level, status. FK to `users.id`.
 
-These are separate tables. Do not conflate them. When a feature refers to "the user's profile", it uses `characters`. When it refers to "the user's character", it uses `characters_rp`.
+**`users` = the person. `characters` = the personas they play.**
+
+When a feature refers to "the user's profile", it queries `users`. When it refers to "the user's character", it queries `characters`. Never use `users` to mean an RP character and never use `characters` to mean the account profile.
 
 ### Active Character
-The currently-selected RP character for IC posting is stored as `active_character_id` on the `characters` table. This is a nullable FK to `characters_rp.id`. It is set when the user selects a character from their My Characters page or the character selector.
+The currently-selected RP character for IC posting is stored as `active_character_id` on the `users` table. This is a nullable FK to `characters.id`. It is set when the user selects a character from their My Characters page or the character selector.
 
 ### Approval Gate
 Only characters with `status = 'active'` can be selected for IC posting. Characters in `status = 'pending'` or `status = 'suspended'` must not appear in the IC character selector.
@@ -387,7 +389,7 @@ Only characters with `status = 'active'` can be selected for IC posting. Charact
 ### XP Deduction Pattern
 Always atomic:
 ```sql
-UPDATE characters_rp
+UPDATE characters
 SET xp = xp - $cost
 WHERE id = $character_id AND xp >= $cost
 RETURNING id
@@ -410,11 +412,45 @@ The faction color must appear consistently: as a diamond pip in post headers, as
 
 *This section accumulates rules discovered during builds that don't yet fit a category. Promoted to a numbered section on next document update.*
 
-*(Empty at v1 — populated as builds proceed)*
+*(Empty — all TWH-0.1 discoveries promoted to §19)*
 
 ---
 
-*Last updated: June 2026*
-*Version history: v1 (Phase 0 — project inception)*
+## 19. Tailwind v4 / Turbopack Platform Rules
+
+Discovered: TWH-0.1 (June 2026). These rules apply for the lifetime of this project.
+
+### Google Fonts — Use `<link>` tags, not CSS `@import`
+
+Tailwind v4 + Turbopack inline CSS at build time. This means a CSS `@import url(...)` for Google Fonts is **invalid** — it lands after real CSS rules and is silently ignored by some renderers.
+
+**Correct pattern** (implemented in `app/layout.tsx`):
+```tsx
+<head>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+  <link
+    rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Cormorant+Upright:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,500;0,700;1,400;1,500;1,700&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Cinzel:wght@400;500;600&display=swap"
+  />
+</head>
+```
+
+**Wrong pattern** (do not use):
+```css
+/* app/globals.css — INVALID in Tailwind v4 + Turbopack */
+@import url('https://fonts.googleapis.com/css2?...');
+```
+
+This is functionally equivalent to the CSS import and fully supported by all browsers. Do not change it to a CSS import in any future session.
+
+### Next.js Version
+
+This project runs **Next.js 16.2.9** (installed by `create-next-app@latest`). The Brief targets Next.js 14 patterns — all are compatible with 16. Do not downgrade. If a Next.js API behaves unexpectedly, check the v16 changelog before assuming a Brief error.
+
+---
+
+*Last updated: June 2026 — v1.2 (table rename: characters→users, characters_rp→characters; email confirmation enabled)*
+*Version history: v1 (Phase 0 inception) → v1.1 (TWH-0.1: §19 added) → v1.2 (TWH-0.1 Q-items: table rename + email confirmation)*
 *This document must be updated whenever a new standing rule is agreed upon.*
 *Cross-reference: TWH_BRIEF_v1.md*

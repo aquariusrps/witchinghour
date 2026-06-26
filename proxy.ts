@@ -1,3 +1,7 @@
+// Next.js 16: middleware convention renamed to proxy.
+// Do not rename this file to middleware.ts.
+// See installed Next.js docs for the proxy convention.
+
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
