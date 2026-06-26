@@ -58,7 +58,7 @@ export default function Masthead({ displayName, avatarUrl }: Props) {
       {/* Top bar */}
       <div
         style={{
-          backgroundColor: 'rgba(48,16,16,0.92)',
+          backgroundColor: 'var(--masthead-bg)',
           backdropFilter: 'blur(12px)',
           WebkitBackdropFilter: 'blur(12px)',
         }}

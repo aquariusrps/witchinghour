@@ -1,5 +1,34 @@
 @import "tailwindcss";
 
+/* ─── Tailwind v4: Blood Moon design tokens ────────────────────────────────
+   Exposes CSS vars as Tailwind utility classes (text-ember, bg-claret, etc.)
+   Color values point to :root vars so theme switching is automatic.
+   Font values are static — Google Fonts loads via <link> in layout.tsx.     */
+@theme {
+  --color-char:        var(--char);
+  --color-claret:      var(--claret);
+  --color-roseash:     var(--roseash);
+  --color-ember:       var(--ember);
+  --color-gold:        var(--gold);
+  --color-moonstone:   var(--moonstone);
+  --color-raised:      var(--raised);
+  --color-elevated:    var(--elevated);
+  --color-mist:        var(--mist);
+  --color-faded:       var(--faded);
+  --color-ember-light: var(--ember-light);
+  --color-ember-dim:   var(--ember-dim);
+  --color-gold-light:  var(--gold-light);
+  --color-gold-dim:    var(--gold-dim);
+  --color-moon-light:  var(--moon-light);
+  --color-moon-dim:    var(--moon-dim);
+
+  --font-cormorant: 'Cormorant Upright', serif;
+  --font-playfair:  'Playfair Display', serif;
+  --font-garamond:  'EB Garamond', Georgia, serif;
+  --font-cinzel:    'Cinzel', serif;
+}
+
+/* ─── Blood Moon (default) ──────────────────────────────────────────────── */
 :root {
   --char:        #100808;
   --claret:      #301010;
@@ -24,10 +53,140 @@
   --cov-border:  rgba(224,176,40,0.35);
   --cab-border:  rgba(200,56,24,0.35);
   --unb-border:  rgba(56,120,168,0.35);
+  /* Ambient glow alpha tokens */
+  --ember-glow:  rgba(200,56,24,0.18);
+  --gold-glow:   rgba(224,176,40,0.12);
+  --moon-glow:   rgba(56,120,168,0.12);
+  /* Component tokens */
+  --masthead-bg: rgba(48,16,16,0.92);
 }
 
 body {
-  background-color: var(--char);
+  background:
+    radial-gradient(ellipse 65% 55% at top left,     var(--ember-glow) 0%, transparent 60%),
+    radial-gradient(ellipse 55% 60% at right center,  var(--gold-glow)  0%, transparent 60%),
+    radial-gradient(ellipse 65% 50% at bottom center, var(--moon-glow)  0%, transparent 60%),
+    var(--char);
   color: var(--roseash);
   font-family: 'EB Garamond', Georgia, serif;
+}
+
+/* ─── Silver & Onyx ─────────────────────────────────────────────────────── */
+[data-theme="silver-onyx"] {
+  --char:        #0a0a12;
+  --claret:      #16162a;
+  --roseash:     #e4e4f0;
+  --ember:       #8b1a4a;
+  --gold:        #7358c0;
+  --moonstone:   #3a8f82;
+  --raised:      #121220;
+  --elevated:    #202038;
+  --mist:        #9090b8;
+  --faded:       #505080;
+  --ember-light: #b8306a;
+  --ember-dim:   #4a0e28;
+  --gold-light:  #9478d8;
+  --gold-dim:    #3c2880;
+  --moon-light:  #58b0a8;
+  --moon-dim:    #1c5854;
+  --cov-fill:    rgba(115,88,192,0.12);
+  --cab-fill:    rgba(139,26,74,0.12);
+  --unb-fill:    rgba(58,143,130,0.12);
+  --cov-border:  rgba(115,88,192,0.35);
+  --cab-border:  rgba(139,26,74,0.35);
+  --unb-border:  rgba(58,143,130,0.35);
+  --ember-glow:  rgba(139,26,74,0.18);
+  --gold-glow:   rgba(115,88,192,0.12);
+  --moon-glow:   rgba(58,143,130,0.12);
+  --masthead-bg: rgba(10,10,18,0.92);
+}
+
+/* ─── Victorian Apothecary ──────────────────────────────────────────────── */
+[data-theme="victorian-apothecary"] {
+  --char:        #080e08;
+  --claret:      #142014;
+  --roseash:     #e0d4a8;
+  --ember:       #c07820;
+  --gold:        #8b3010;
+  --moonstone:   #7068a0;
+  --raised:      #0e180e;
+  --elevated:    #1e3018;
+  --mist:        #a09060;
+  --faded:       #608040;
+  --ember-light: #e09030;
+  --ember-dim:   #703810;
+  --gold-light:  #b05028;
+  --gold-dim:    #601808;
+  --moon-light:  #9080c0;
+  --moon-dim:    #3c3060;
+  --cov-fill:    rgba(192,120,32,0.12);
+  --cab-fill:    rgba(139,48,16,0.12);
+  --unb-fill:    rgba(112,104,160,0.12);
+  --cov-border:  rgba(192,120,32,0.35);
+  --cab-border:  rgba(139,48,16,0.35);
+  --unb-border:  rgba(112,104,160,0.35);
+  --ember-glow:  rgba(192,120,32,0.18);
+  --gold-glow:   rgba(139,48,16,0.12);
+  --moon-glow:   rgba(112,104,160,0.12);
+  --masthead-bg: rgba(8,14,8,0.92);
+}
+
+/* ─── Crimson Athenaeum ─────────────────────────────────────────────────── */
+[data-theme="crimson-athenaeum"] {
+  --char:        #080008;
+  --claret:      #180010;
+  --roseash:     #f0e0d0;
+  --ember:       #c81020;
+  --gold:        #b89020;
+  --moonstone:   #607898;
+  --raised:      #100010;
+  --elevated:    #280018;
+  --mist:        #c0a090;
+  --faded:       #804850;
+  --ember-light: #e82030;
+  --ember-dim:   #780010;
+  --gold-light:  #d0a830;
+  --gold-dim:    #706010;
+  --moon-light:  #8098b8;
+  --moon-dim:    #304860;
+  --cov-fill:    rgba(184,144,32,0.12);
+  --cab-fill:    rgba(200,16,32,0.12);
+  --unb-fill:    rgba(96,120,152,0.12);
+  --cov-border:  rgba(184,144,32,0.35);
+  --cab-border:  rgba(200,16,32,0.35);
+  --unb-border:  rgba(96,120,152,0.35);
+  --ember-glow:  rgba(200,16,32,0.18);
+  --gold-glow:   rgba(184,144,32,0.12);
+  --moon-glow:   rgba(96,120,152,0.12);
+  --masthead-bg: rgba(8,0,8,0.92);
+}
+
+/* ─── Midnight Garden ───────────────────────────────────────────────────── */
+[data-theme="midnight-garden"] {
+  --char:        #040c0e;
+  --claret:      #081820;
+  --roseash:     #c8e0e8;
+  --ember:       #b87840;
+  --gold:        #b03060;
+  --moonstone:   #7840b8;
+  --raised:      #081418;
+  --elevated:    #102028;
+  --mist:        #8098a0;
+  --faded:       #405868;
+  --ember-light: #d89850;
+  --ember-dim:   #684020;
+  --gold-light:  #d04878;
+  --gold-dim:    #681838;
+  --moon-light:  #9860d0;
+  --moon-dim:    #481870;
+  --cov-fill:    rgba(184,120,64,0.12);
+  --cab-fill:    rgba(176,48,96,0.12);
+  --unb-fill:    rgba(120,64,184,0.12);
+  --cov-border:  rgba(184,120,64,0.35);
+  --cab-border:  rgba(176,48,96,0.35);
+  --unb-border:  rgba(120,64,184,0.35);
+  --ember-glow:  rgba(184,120,64,0.18);
+  --gold-glow:   rgba(176,48,96,0.12);
+  --moon-glow:   rgba(120,64,184,0.12);
+  --masthead-bg: rgba(4,12,14,0.92);
 }

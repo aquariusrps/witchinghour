@@ -28,9 +28,9 @@ const CANONS = [
 ]
 
 const HERO_GRADIENT = [
-  'radial-gradient(ellipse 65% 55% at top left,  rgba(200,56,24,0.18)  0%, transparent 60%)',
-  'radial-gradient(ellipse 55% 60% at right center, rgba(224,176,40,0.12) 0%, transparent 60%)',
-  'radial-gradient(ellipse 65% 50% at bottom center, rgba(56,120,168,0.12) 0%, transparent 60%)',
+  'radial-gradient(ellipse 65% 55% at top left,     var(--ember-glow) 0%, transparent 60%)',
+  'radial-gradient(ellipse 55% 60% at right center,  var(--gold-glow)  0%, transparent 60%)',
+  'radial-gradient(ellipse 65% 50% at bottom center, var(--moon-glow)  0%, transparent 60%)',
   'var(--char)',
 ].join(', ')
 
