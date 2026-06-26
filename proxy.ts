@@ -1,0 +1,66 @@
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
+import { createServerClient } from '@supabase/ssr'
+
+const PROTECTED_PREFIXES = [
+  '/dashboard',
+  '/forums',
+  '/the-circle',
+  '/grimoire',
+  '/rewatch',
+  '/members',
+  '/my-characters',
+  '/apothecary',
+  '/profile',
+  '/admin',
+  '/mod',
+]
+
+export async function proxy(request: NextRequest) {
+  // Must re-assign on every setAll call (SSR cookie mutation pattern)
+  let supabaseResponse = NextResponse.next({ request })
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll()
+        },
+        setAll(cookiesToSet) {
+          // Set on request so downstream Server Components see the updated cookies
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+          // Re-create response so it carries the updated request
+          supabaseResponse = NextResponse.next({ request })
+          // Set on response so the browser receives updated session cookies
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, options)
+          )
+        },
+      },
+    }
+  )
+
+  // getUser() triggers session refresh and writes back via setAll above.
+  // Do not replace with getSession() — that skips JWT validation.
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  const { pathname } = request.nextUrl
+  const isProtected = PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix))
+
+  if (isProtected && !user) {
+    return NextResponse.redirect(new URL('/login', request.url))
+  }
+
+  return supabaseResponse
+}
+
+export const config = {
+  matcher: [
+    // Run on all paths except Next.js internals and static assets
+    '/((?!_next/static|_next/image|favicon\\.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
+  ],
+}
