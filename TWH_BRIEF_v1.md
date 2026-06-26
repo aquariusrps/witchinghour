@@ -19,6 +19,15 @@ The site recreates and modernises the early-2000s fansite experience of communit
 
 This is a fully custom build. No CMS. No game engine. Built from scratch.
 
+**Domain:** `atwitchinghour.com` (primary) + `atwitchinghour.net` (redirect to .com)
+Vercel preview URL: `https://the-witching-hour.vercel.app`
+
+**Landing page copy (confirmed):**
+- Hero line: *"The Witching Hour is upon us."* — "The Witching Hour" in Cormorant Upright weight 600 gold, "is upon us." in weight 300 roseash — one continuous line
+- Tagline: *"For those who never stopped believing in magic."* — EB Garamond italic
+- Primary CTA: "Enter the Circle" → /register
+- Secondary CTA: "I already belong" → /login
+
 ---
 
 ## 2. Tech Stack
@@ -34,7 +43,10 @@ This is a fully custom build. No CMS. No game engine. Built from scratch.
 - **Realtime:** Supabase Realtime (live chat, notifications, online presence)
 - **File Storage:** Supabase Storage (avatars, character portraits, theme assets)
 - **Image Processing:** sharp (server-side, lossless PNG processing for all image uploads)
-- **Styling:** Tailwind CSS
+- **Styling:** Tailwind CSS v4 (CSS-first configuration — no tailwind.config.ts)
+  Tailwind v4 uses an `@theme` block in `globals.css` instead of `tailwind.config.ts`.
+  Color tokens and font families are defined there, not in a JS config file.
+  Do NOT create or reference `tailwind.config.ts` — it is not used in this project.
 - **Rich Text Editor:** Tiptap (@tiptap/react, @tiptap/starter-kit, extensions)
   Used in: forum posts, Grimoire entries, character bios, Whispers composition
   Custom extension: spoiler tags (click-to-reveal)
@@ -44,8 +56,31 @@ This is a fully custom build. No CMS. No game engine. Built from scratch.
   **Rate limit (free tier): 5 req/s** — bulk sends MUST use `resend.batch.send([...])`, never individual `resend.emails.send()` in a loop
 - **Deployment:** Vercel (free Hobby tier, auto-deploys on GitHub push)
   **Critical Vercel constraint:** 4.5MB Serverless Function body limit on Hobby plan.
-  Admin image uploads MUST use the P-DC (direct browser upload) pattern — see §33.
+  Admin image uploads MUST use the P-DC (direct browser upload) pattern — see §19.
   Never route large file uploads through Server Actions on Hobby plan.
+
+### Required Environment Variables
+All four must be present in `.env.local` locally AND in Vercel Environment Variables
+for production. The site will fail silently or 404 if any are missing.
+
+```
+NEXT_PUBLIC_SUPABASE_URL=        # Supabase project URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY=   # Supabase anon/public key
+SUPABASE_SERVICE_ROLE_KEY=       # Supabase service role key (never expose client-side)
+RESEND_API_KEY=                  # Resend API key for transactional email
+NEXT_PUBLIC_SITE_URL=            # Full site URL (https://atwitchinghour.com in production)
+```
+
+**Pre-deploy checklist:** Before any Vercel deployment, confirm all five variables
+are set in Vercel → Settings → Environment Variables. A missing env var will not
+cause a build failure but WILL cause runtime 404s or auth failures.
+
+### Supabase Configuration (Dashboard)
+Authentication → URL Configuration:
+- Site URL: `https://atwitchinghour.com` (update when domain is live)
+- Redirect URLs: `https://atwitchinghour.com/auth/callback`
+  Also add: `http://localhost:3000/auth/callback` for local dev
+  Also add: `https://the-witching-hour.vercel.app/auth/callback` for Vercel preview
 
 ### Supabase Storage Buckets (all public)
 - `portraits` — user avatar images
@@ -136,16 +171,18 @@ https://fonts.googleapis.com/css2?family=Cormorant+Upright:wght@300;400;500;600&
 
 ### CSS Variable Naming Convention
 
-All design tokens are declared as CSS custom properties on `:root`. Theme switching works by applying a `data-theme` attribute to `<body>` which overrides these variables.
+All design tokens are declared as CSS custom properties on `:root`. Theme switching works by applying a `data-theme` attribute to `<body>` which overrides these variables. Tailwind v4 utility classes (e.g. `text-ember`, `bg-claret`) are defined in the `@theme` block in `globals.css` and resolve to these CSS variables — so they remain theme-aware.
 
 ```css
 :root {
+  /* Six hero colors */
   --char:        #100808;
   --claret:      #301010;
   --roseash:     #f0d4c0;
   --ember:       #c83818;
   --gold:        #e0b028;
   --moonstone:   #3878a8;
+  /* Extended tones */
   --raised:      #1e0c0c;
   --elevated:    #3e1818;
   --mist:        #b89080;
@@ -163,8 +200,21 @@ All design tokens are declared as CSS custom properties on `:root`. Theme switch
   --cov-border:  rgba(224,176,40,0.35);
   --cab-border:  rgba(200,56,24,0.35);
   --unb-border:  rgba(56,120,168,0.35);
+  /* Alpha / glow tokens (added TWH-1.4) */
+  --ember-glow:  rgba(200,56,24,0.15);
+  --gold-glow:   rgba(224,176,40,0.12);
+  --moon-glow:   rgba(56,120,168,0.10);
+  --masthead-bg: rgba(48,16,16,0.92);
 }
 ```
+
+**Tailwind v4 `@theme` block:** Color utility classes (`text-ember`, `bg-claret`,
+`border-gold`, etc.) and font family classes (`font-cormorant`, `font-playfair`,
+`font-garamond`, `font-cinzel`) are declared in `@theme` in `globals.css` and
+resolve to the CSS variables above. They are theme-aware automatically.
+
+**Opacity modifier limitation:** Tailwind v4 opacity modifiers (`text-ember/50`)
+do NOT work with CSS variable-backed colors. Use inline styles for alpha variants.
 
 ### Signature Visual Elements
 
@@ -232,7 +282,7 @@ Three factions. Characters choose a faction on creation. Factions are not strict
 
 ## 7. Character System
 
-Characters are sub-profiles of user accounts. One user can have up to 3 characters (admin-configurable via site_settings: max_characters_per_user, default 3).
+Characters are sub-profiles of user accounts. The maximum number of characters per user is admin-configurable via `site_settings` key `max_characters_per_user` (default value: `'5'`). Nothing in the application hardcodes a character limit — always read from site_settings.
 
 ### Character Fields
 - `name` — character display name (shown in IC posts instead of username)
@@ -447,7 +497,7 @@ Cached functions and tags (to be extended as features are built):
 ### Table Naming Convention
 **Critical — read before touching any table:**
 - `users` — account-level profile. One row per registered user. Maps to `auth.users.id`.
-- `characters` — RP character sub-profiles. Up to 3 per user. FK to `users.id`.
+- `characters` — RP character sub-profiles. Multiple per user (limit set in site_settings). FK to `users.id`.
 
 These names are final and intentional. `users` is the person. `characters` are the personas they play. Never reverse this or use `characters` to mean the account profile.
 
@@ -716,6 +766,45 @@ const [isPending, startTransition] = useTransition()
 startTransition(async () => { await action() })
 ```
 
+### Promise.all Layout Pattern (confirmed TWH-1.3)
+To achieve parallel queries in layout.tsx without a sequential waterfall:
+1. Call `getSession()` first (local cookie read, no network call) to extract the user ID
+2. Use that ID to start the users table query simultaneously with `getUser()` and `getCachedSiteSettings()` in a single `Promise.all`
+3. Never add sequential `await` calls outside the `Promise.all` block
+
+```ts
+// correct
+const session = await getServerClient().auth.getSession() // local, no network
+const userId = session.data.session?.user.id
+const [settings, { data: { user } }, userRow] = await Promise.all([
+  getCachedSiteSettings(),
+  getServerClient().auth.getUser(),
+  getUserRow(userId)
+])
+```
+
+### getAdminClient() Usage Rules (confirmed TWH-1.3)
+Use `getAdminClient()` (service role, bypasses RLS) in these specific cases:
+1. `getCachedSiteSettings()` — must work for unauthenticated pages (landing, login)
+2. Fire-and-forget operations (e.g. `logSession()`) — run asynchronously after the component returns, where the server client's cookie context may no longer be valid
+3. Admin Server Actions that need to write data blocked by user RLS policies
+
+Do NOT use `getAdminClient()` for reads that should be RLS-filtered.
+
+### Authenticated Route Group Pattern (confirmed TWH-1.3)
+All authenticated pages live under `app/(authenticated)/`. The route group layout
+`app/(authenticated)/layout.tsx` handles the Masthead, Sidebar, and PageLayout
+shell once — pages inside the group do not import or render PageLayout themselves.
+
+Public pages (landing, login, register, confirm) live outside the route group.
+Auth pages live under `app/(auth)/`.
+
+### Middleware Convention (confirmed fix TWH-1.3)
+The Next.js middleware file is `middleware.ts` at the project root.
+The exported function MUST be named `middleware`.
+This project uses `middleware.ts` with `export async function middleware(...)`.
+Do NOT rename to `proxy.ts` or export as `proxy` — this breaks routing entirely.
+
 ---
 
 ## 20. Build History
@@ -730,21 +819,97 @@ startTransition(async () => { await action() })
 - `lib/supabase/browserClient.ts` — module-level singleton via `createBrowserClient`, exported as `getBrowserClient()`
 - `lib/supabase/serverClient.ts` — async `getServerClient()` using `createServerClient` with `cookies()` from `next/headers`
 - `lib/supabase/adminClient.ts` — `getAdminClient()` using service role key, no session persistence
-- `lib/cached-settings.ts` — empty shell with `unstable_cache` import and §17 comment
+- `lib/cached-settings.ts` — empty shell with `unstable_cache` import
 - `app/globals.css` — Blood Moon `:root` variables (22 tokens, faction fills/borders), body defaults
-- `app/layout.tsx` — Google Fonts loaded via `<link>` tags with preconnect headers (not CSS `@import` — see Process §19)
+- `app/layout.tsx` — Google Fonts loaded via `<link>` tags with preconnect headers
 - Dev server confirmed: 200 OK, no errors
 
 **TWH-0.2 — Complete**
 - `TWH_BRIEF_v1.md` — master project document written
 - `TWH_PROCESS_v1.md` — build governance document written
 
-**TWH-0.3 — In Progress**
-- GitHub repository: `witchinghour`
-- Supabase project: `the-witching-hour`
-- Storage buckets: pending
-- `.env.local`: pending
-- Vercel: pending
+**TWH-0.3 — Complete**
+- GitHub repository: `aquariusrps/witchinghour`
+- Supabase project: `the-witching-hour` (project ID: vkhuttcusqubteseifui)
+- Storage buckets created: `portraits`, `characters`, `rich-text-images`
+- `.env.local` created with all 5 required env vars
+- Vercel project connected to GitHub, auto-deploy on push to main confirmed
+- Supabase Auth configured: email confirmation ON, SMTP via Resend, redirect URLs set
+- **Lesson recorded:** `.env.local` must be created and verified before any subsequent
+  build begins. Missing env vars cause silent runtime 404s, not build errors.
+
+### Phase 1 — Authentication & User Accounts (June 2026)
+
+**TWH-1.1 — Complete** (commit: e5eb864 area)
+Migration 001 applied. Tables created:
+- `site_settings` — key/value, RLS: SELECT authenticated, write service role only
+  Seed rows: `launch_date=''`, `max_characters_per_user='5'`, `xp_per_rp_post='10'`
+- `users` — account profiles, RLS: SELECT all authenticated, UPDATE own row only
+  `active_character_id` nullable, no FK yet (deferred to Migration 005)
+- `session_logs` — INSERT own rows only, no SELECT policy (service role reads)
+- `ip_bans` — all ops via service role only
+
+**TWH-1.2 — Complete**
+- Registration flow: `app/(auth)/register/page.tsx` + `RegisterForm.tsx`
+- Server action: `app/actions/auth.ts` → `registerUser()`
+  Validates fields, checks display_name uniqueness via admin client,
+  calls `supabase.auth.signUp()` with `emailRedirectTo` → `/auth/callback`,
+  inserts `users` row via admin client, redirects to `/confirm`
+- `app/(auth)/confirm/page.tsx` — "Check your email" page
+- `app/auth/callback/route.ts` — exchanges code for session, inserts welcome
+  Council Notice into `mail_messages` (try/catch — deferred until mail migration),
+  redirects to `/dashboard`
+- `app/(auth)/login/page.tsx` + `LoginForm.tsx` — email/password login
+- `app/(auth)/layout.tsx` — auth page shell
+- ESLint added: `eslint.config.mjs`, `eslint-config-next` installed
+
+**TWH-1.2a — Complete**
+- `app/page.tsx` — landing page
+  Hero: "The Witching Hour" (Cormorant Upright, weight 600, gold) + "is upon us."
+  (weight 300, roseash) on one continuous line via `clamp()`
+  Tagline: "For those who never stopped believing in magic." (EB Garamond italic)
+  CTAs: "Enter the Circle" → /register, "I already belong" → /login
+  Blood moon logo mark SVG (120px), pentacle watermark (4% opacity)
+  Show ribbon (7 canons, colour-coded dots)
+  CSS animations: fade-in + scale on logo, stagger fade on content
+  `prefers-reduced-motion` respected
+  SEO: title, meta description, Open Graph tags
+  Authenticated users redirected to /dashboard
+- `app/components/BloodMoonMark.tsx` — reusable SVG logo mark component
+
+**TWH-1.3 — Complete** (commits: e5eb864, d20096d)
+- `middleware.ts` — Next.js middleware (MUST be named middleware.ts, export as
+  `middleware` — see §19 Middleware Convention). Protects 11 route prefixes,
+  refreshes session cookies via `@supabase/ssr` updateSession pattern.
+  **Critical lesson:** Claude Code incorrectly named this `proxy.ts` with
+  `export function proxy()` — this broke all routing. Fixed to `middleware.ts`
+  with `export async function middleware()`.
+- `lib/cached-settings.ts` — `getCachedSiteSettings()` implemented with
+  `unstable_cache`, tag `site-settings`, TTL 300s, uses `getAdminClient()`
+  (must work for unauthenticated pages). `getSetting(key)` helper added.
+- `app/layout.tsx` — parallel `Promise.all` pattern, `data-theme` on body,
+  fire-and-forget `logSession()`
+- `app/(authenticated)/layout.tsx` — route group layout for all authenticated pages
+- `app/(authenticated)/dashboard/page.tsx` — dashboard shell
+- `app/components/Masthead.tsx` — sticky nav with show ribbon
+- `app/components/Sidebar.tsx` — left nav (Client Component for `usePathname()`)
+- `app/components/PageLayout.tsx` — grid layout wrapper (220px sidebar + 1fr)
+
+**TWH-1.4 — Complete**
+- `app/globals.css` — complete rewrite:
+  `@theme` block for Tailwind v4 (16 color utility classes + 4 font classes)
+  4 new alpha tokens: `--ember-glow`, `--gold-glow`, `--moon-glow`, `--masthead-bg`
+  Body three-layer radial gradient (ember top-left, gold mid-right, moon bottom)
+  4 `[data-theme]` override blocks: silver-onyx, victorian-apothecary,
+  crimson-athenaeum, midnight-garden
+- Component audit: all hardcoded rgba values replaced with CSS variable tokens
+
+### Known Issues / Active Q-items
+- Alternate theme palette hex values are first-pass scaffolds — verify against
+  visual mocks before shipping theme switcher publicly
+- Body gradient + landing page HERO_GRADIENT may double-layer — verify visually
+- React cache() / DAL deduplication deferred — getUser() runs twice per
+  authenticated page render (acceptable at current scale, revisit at Phase 5+)
 
 *This document is updated at the completion of each build phase.*
 *Cross-reference: TWH_PROCESS_v1.md (build governance), TWH_ROADMAP (in planning chat)*
